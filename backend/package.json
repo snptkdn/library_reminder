@@ -1,0 +1,25 @@
+{
+  "name": "backend",
+  "type": "module",
+  "scripts": {
+    "build": "esbuild --bundle --outfile=./dist/index.js --platform=node --target=node20 ./src/index.ts",
+    "test": "vitest"
+  },
+  "devDependencies": {
+    "@types/bcrypt": "^6.0.0",
+    "@types/uuid": "^10.0.0",
+    "esbuild": "^0.21.4",
+    "vitest": "^2.0.5"
+  },
+  "dependencies": {
+    "@aws-sdk/client-bedrock-runtime": "^3.941.0",
+    "@aws-sdk/client-dynamodb": "^3.940.0",
+    "@aws-sdk/lib-dynamodb": "^3.940.0",
+    "@hono/zod-validator": "^0.7.5",
+    "bcrypt": "^6.0.0",
+    "hono": "^4.10.7",
+    "uuid": "^13.0.0",
+    "web-push": "^3.6.7",
+    "zod": "^4.1.13"
+  }
+}
