@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "axios": "^1.7.2",
+    "lucide-react": "^0.555.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "zustand": "^4.5.4"
@@ -31,6 +32,7 @@
     "tailwindcss": "^4.1.17",
     "typescript": "^5.2.2",
     "vite": "^5.3.1",
-    "vite-plugin-pwa": "^0.21.0"
+    "vite-plugin-pwa": "^0.21.0",
+    "workbox-precaching": "^7.4.0"
   }
 }

@@ -9,7 +9,8 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       strategies: 'injectManifest',
-      swSrc: 'src/service-worker.ts',
+      srcDir: 'src',
+      filename: 'service-worker.ts',
       manifest: {
         name: 'Library Notifier',
         short_name: 'LibNotify',
