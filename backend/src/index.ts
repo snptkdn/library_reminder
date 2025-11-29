@@ -109,7 +109,7 @@ app.post('/upload', async (c) => {
         const parsedResult = JSON.parse(jsonString);
 
         if (!parsedResult.books || !Array.isArray(parsedResult.books)) {
-             throw new Error("Invalid format from Bedrock");
+            throw new Error("Invalid format from Bedrock");
         }
 
         const putRequests = parsedResult.books.map(book => ({
@@ -193,7 +193,7 @@ const handleScheduledNotification = async () => {
 
 // Extend the handler to check for EventBridge events
 export const handler = async (event, context) => {
-    if (event.source === 'morning_schedule' || event.source === 'evening_schedule') {
+    if (event.source === 'morning_schedule') {
         await handleScheduledNotification();
         return { statusCode: 200, body: 'Scheduled task executed.' };
     }

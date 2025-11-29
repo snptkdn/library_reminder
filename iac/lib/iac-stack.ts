@@ -11,6 +11,7 @@ import * as cloudfront from 'aws-cdk-lib/aws-cloudfront';
 import * as origins from 'aws-cdk-lib/aws-cloudfront-origins';
 import * as scheduler from 'aws-cdk-lib/aws-scheduler';
 import * as iam from 'aws-cdk-lib/aws-iam';
+import * as s3deploy from 'aws-cdk-lib/aws-s3-deployment';
 
 export class IacStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -57,6 +58,14 @@ export class IacStack extends cdk.Stack {
       defaultRootObject: 'index.html',
     });
 
+    // Deploy site contents to S3 bucket
+    new s3deploy.BucketDeployment(this, 'DeployWithInvalidation', {
+      sources: [s3deploy.Source.asset(path.join(__dirname, '../../frontend/dist'))],
+      destinationBucket: siteBucket,
+      distribution,
+      distributionPaths: ['/*'],
+    });
+
     // --- Backend API ---
 
     // DynamoDB Table for books
@@ -69,9 +78,9 @@ export class IacStack extends cdk.Stack {
 
     // DynamoDB Table for Push Subscription
     const subscriptionTable = new dynamodb.Table(this, 'SubscriptionTable', {
-        partitionKey: { name: 'userId', type: dynamodb.AttributeType.STRING },
-        billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-        removalPolicy: cdk.RemovalPolicy.DESTROY,
+      partitionKey: { name: 'userId', type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
 
     // Lambda Function for the Hono backend
@@ -124,32 +133,23 @@ export class IacStack extends cdk.Stack {
 
     // IAM Role for the Scheduler to invoke the Lambda function
     const schedulerRole = new iam.Role(this, 'SchedulerRole', {
-        assumedBy: new iam.ServicePrincipal('scheduler.amazonaws.com'),
+      assumedBy: new iam.ServicePrincipal('scheduler.amazonaws.com'),
     });
 
     backendFunction.grantInvoke(schedulerRole); // Grant invoke permission to the role
 
     // EventBridge Scheduler to trigger notifications
     new scheduler.CfnSchedule(this, 'MorningSchedule', {
-        flexibleTimeWindow: { mode: 'OFF' },
-        scheduleExpression: 'cron(0 9 * * ? *)', // 9:00 AM
-        scheduleExpressionTimezone: 'Asia/Tokyo',
-        target: {
-            arn: backendFunction.functionArn,
-            roleArn: schedulerRole.roleArn,
-            input: JSON.stringify({ source: 'morning_schedule' }),
-        },
+      flexibleTimeWindow: { mode: 'OFF' },
+      scheduleExpression: 'cron(0 9 * * ? *)', // 9:00 AM
+      scheduleExpressionTimezone: 'Asia/Tokyo',
+      target: {
+        arn: backendFunction.functionArn,
+        roleArn: schedulerRole.roleArn,
+        input: JSON.stringify({ source: 'morning_schedule' }),
+      },
     });
-    new scheduler.CfnSchedule(this, 'EveningSchedule', {
-        flexibleTimeWindow: { mode: 'OFF' },
-        scheduleExpression: 'cron(0 7 * * ? *)', // 7:00 AM
-        scheduleExpressionTimezone: 'Asia/Tokyo',
-        target: {
-            arn: backendFunction.functionArn,
-            roleArn: schedulerRole.roleArn,
-            input: JSON.stringify({ source: 'evening_schedule' }),
-        },
-    });
+
 
 
     // --- Outputs ---
@@ -157,7 +157,7 @@ export class IacStack extends cdk.Stack {
       value: `https://${distribution.distributionDomainName}`,
     });
     new cdk.CfnOutput(this, 'ApiUrl', {
-        value: httpApi.url!,
+      value: httpApi.url!,
     });
   }
 }

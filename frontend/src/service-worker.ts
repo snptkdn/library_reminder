@@ -1,6 +1,12 @@
 /// <reference lib="WebWorker" />
 
-export declare const self: ServiceWorkerGlobalScope;
+import { cleanupOutdatedCaches, precacheAndRoute } from 'workbox-precaching';
+
+declare let self: ServiceWorkerGlobalScope;
+
+cleanupOutdatedCaches();
+
+precacheAndRoute(self.__WB_MANIFEST);
 
 self.addEventListener('push', (event) => {
     const data = event.data?.json() ?? { title: 'Default Title', body: 'Default body' };

@@ -10,7 +10,8 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
-      src: 'src/service-worker.ts',
+      srcDir: 'src',
+      filename: 'service-worker.ts',
       strategies: 'injectManifest',
       manifest: {
         name: 'Library Notifier',

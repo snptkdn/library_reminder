@@ -30,6 +30,7 @@
     "tailwindcss": "^4.1.17",
     "typescript": "^5.2.2",
     "vite": "^5.3.1",
-    "vite-plugin-pwa": "^0.21.0"
+    "vite-plugin-pwa": "^0.21.0",
+    "workbox-precaching": "^7.4.0"
   }
 }

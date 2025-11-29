@@ -1,0 +1,4 @@
+npx cdk deploy \
+  --parameters VapidPublicKey="BLuWIZJaBfWkUdDtIySpb8BI7P-uhB0gI27f7e18wrBOc8tSFreXchFlSE-DqEp_ML8GghCjl7HcEd7LfQD5XuI" \
+  --parameters VapidPrivateKey="7EEsD05OCcXY2tIxeAS7LqZGm6vlSaUCS44aVu1IY5c" \
+  --parameters VapidEmail="mailto:400m.wflick@gmail.com"
