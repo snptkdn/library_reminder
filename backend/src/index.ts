@@ -8,8 +8,10 @@ import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import * as webpush from 'web-push';
 import { v4 as uuidv4 } from 'uuid';
+import pino from 'pino';
 
 const app = new Hono();
+const logger = pino();
 
 // --- Hardcoded Credentials & Config ---
 const USERNAME = 'user';
@@ -105,8 +107,11 @@ app.post('/upload', async (c) => {
 
     try {
         const response = await bedrockClient.send(bedrockCommand);
-        const jsonString = JSON.parse(new TextDecoder().decode(response.body)).content[0].text;
+        const responseBody = new TextDecoder().decode(response.body);
+        logger.info({ bedrockResponse: responseBody }, 'Received response from Bedrock');
+        const jsonString = JSON.parse(responseBody).content[0].text;
         const parsedResult = JSON.parse(jsonString);
+        logger.info({ parsedResult }, 'Parsed Bedrock response');
 
         if (!parsedResult.books || !Array.isArray(parsedResult.books)) {
             throw new Error("Invalid format from Bedrock");
@@ -134,7 +139,7 @@ app.post('/upload', async (c) => {
         return c.json({ success: true, count: putRequests.length });
 
     } catch (error) {
-        console.error('Error processing image with Bedrock or saving to DynamoDB:', error);
+        logger.error(error, 'Error processing image with Bedrock or saving to DynamoDB');
         return c.json({ error: 'Failed to process image' }, 500);
     }
 });
@@ -142,7 +147,7 @@ app.post('/upload', async (c) => {
 
 // This function will be triggered by EventBridge
 const handleScheduledNotification = async () => {
-    console.log('Running scheduled notification check...');
+    logger.info('Running scheduled notification check...');
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const tomorrow = new Date(today);
@@ -161,7 +166,7 @@ const handleScheduledNotification = async () => {
         const { Items: booksToNotify } = await docClient.send(booksCommand);
 
         if (!booksToNotify || booksToNotify.length === 0) {
-            console.log('No books due for notification.');
+            logger.info('No books due for notification.');
             return;
         }
 
@@ -173,7 +178,7 @@ const handleScheduledNotification = async () => {
         const { Item: subscriptionItem } = await docClient.send(getSubCommand);
 
         if (!subscriptionItem || !subscriptionItem.subscription) {
-            console.log('User has not subscribed for notifications or subscription is invalid.');
+            logger.info('User has not subscribed for notifications or subscription is invalid.');
             return;
         }
         const subscription = subscriptionItem.subscription;
@@ -184,10 +189,10 @@ const handleScheduledNotification = async () => {
                 body: `Your book "${book.title}" is due on ${book.dueDate}.`,
             });
             await webpush.sendNotification(subscription, notificationPayload);
-            console.log(`Notification sent for book: ${book.title}`);
+            logger.info({ book: { title: book.title, dueDate: book.dueDate } }, 'Sent book return reminder');
         }
     } catch (error) {
-        console.error('Error sending notifications:', error);
+        logger.error(error, 'Error sending notifications');
     }
 };
 
