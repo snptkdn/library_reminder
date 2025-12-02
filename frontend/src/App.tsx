@@ -4,13 +4,6 @@ import axios from 'axios';
 
 // API URL will be set at runtime from config.json
 
-// This should be the same public key used in the backend
-const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY;
-
-if (!VAPID_PUBLIC_KEY) {
-  console.error("VITE_VAPID_PUBLIC_KEY is not set. Notifications will not work.");
-}
-
 function urlBase64ToUint8Array(base64String: string) {
   const padding = '='.repeat((4 - base64String.length % 4) % 4);
   const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
@@ -22,7 +15,7 @@ function urlBase64ToUint8Array(base64String: string) {
   return outputArray;
 }
 
-const subscribeUserToPush = async () => {
+const subscribeUserToPush = async (publicKey: string) => {
   try {
     const registration = await navigator.serviceWorker.ready;
     const existingSubscription = await registration.pushManager.getSubscription();
@@ -34,7 +27,7 @@ const subscribeUserToPush = async () => {
 
     const subscription = await registration.pushManager.subscribe({
       userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+      applicationServerKey: urlBase64ToUint8Array(publicKey),
     });
 
     // Send the subscription to the backend
@@ -46,12 +39,12 @@ const subscribeUserToPush = async () => {
   }
 };
 
-const setupNotifications = () => {
+const setupNotifications = (publicKey: string) => {
   if ('serviceWorker' in navigator && 'PushManager' in window) {
     Notification.requestPermission().then(permission => {
       if (permission === 'granted') {
         console.log('Notification permission granted.');
-        subscribeUserToPush();
+        subscribeUserToPush(publicKey);
       }
     });
   }
@@ -112,7 +105,6 @@ const MainScreen = () => {
 
   useEffect(() => {
     fetchBooks();
-    setupNotifications(); // Setup notifications on component mount
   }, [fetchBooks]);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -152,7 +144,7 @@ const MainScreen = () => {
 };
 
 function App() {
-  const { isAuthenticated, apiUrl, setApiUrl } = useStore();
+  const { isAuthenticated, setApiUrl, vapidPublicKey, setVapidPublicKey } = useStore();
   // Load API URL from config.json on mount
   useEffect(() => {
     fetch('/config.json')
@@ -161,11 +153,20 @@ function App() {
         if (data.apiUrl) {
           setApiUrl(data.apiUrl);
         }
+        if (data.vapidPublicKey) {
+          setVapidPublicKey(data.vapidPublicKey);
+        }
       })
       .catch((err) => {
         console.error('Failed to load config.json', err);
       });
   }, []);
+
+  useEffect(() => {
+    if (isAuthenticated && vapidPublicKey) {
+      setupNotifications(vapidPublicKey);
+    }
+  }, [isAuthenticated, vapidPublicKey]);
 
 
   if (!isAuthenticated) {

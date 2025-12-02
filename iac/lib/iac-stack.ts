@@ -36,6 +36,12 @@ export class IacStack extends cdk.Stack {
       default: 'mailto:admin@example.com'
     });
 
+    const bedrockModelId = new cdk.CfnParameter(this, 'BedrockModelId', {
+      type: 'String',
+      description: 'The Bedrock Model ID or Inference Profile ARN.',
+      default: 'arn:aws:bedrock:ap-northeast-1:570699714415:inference-profile/jp.anthropic.claude-sonnet-4-5-20250929-v1:0',
+    });
+
     // --- Frontend Hosting (Secure Pattern) ---
 
     // S3 Bucket to host the static React app (kept private)
@@ -58,13 +64,11 @@ export class IacStack extends cdk.Stack {
       defaultRootObject: 'index.html',
     });
 
-    // Deploy site contents to S3 bucket
-    new s3deploy.BucketDeployment(this, 'DeployWithInvalidation', {
-      sources: [s3deploy.Source.asset(path.join(__dirname, '../../frontend/dist'))],
-      destinationBucket: siteBucket,
-      distribution,
-      distributionPaths: ['/*'],
-    });
+    // Deploy site contents to S3 bucket - MOVED to end of stack to include config.json
+    // (Removed separate deployment to avoid pruning)
+
+
+
 
     // --- Backend API ---
 
@@ -98,6 +102,7 @@ export class IacStack extends cdk.Stack {
         VAPID_PRIVATE_KEY: vapidPrivateKey.valueAsString,
         BEDROCK_REGION: this.region, // Pass the stack's region to the Lambda
         VAPID_EMAIL: vapidEmail.valueAsString,
+        BEDROCK_MODEL_ID: bedrockModelId.valueAsString,
       },
       timeout: cdk.Duration.seconds(30),
     });
@@ -118,14 +123,36 @@ export class IacStack extends cdk.Stack {
         allowHeaders: ['*'],
         allowMethods: [apigwv2.CorsHttpMethod.ANY],
         allowOrigins: [`https://${distribution.distributionDomainName}`], // Restrict to CloudFront URL
+        allowCredentials: true,
       },
+    });
+
+    // Deploy site contents AND config.json
+    new s3deploy.BucketDeployment(this, 'DeploySite', {
+      sources: [
+        s3deploy.Source.asset(path.join(__dirname, '../../frontend/dist')),
+        s3deploy.Source.jsonData('config.json', {
+          apiUrl: httpApi.url!,
+          vapidPublicKey: vapidPublicKey.valueAsString
+        })
+      ],
+      destinationBucket: siteBucket,
+      distribution,
+      distributionPaths: ['/*'],
     });
 
     const integration = new HttpLambdaIntegration('LambdaIntegration', backendFunction);
 
     httpApi.addRoutes({
       path: '/{proxy+}',
-      methods: [apigwv2.HttpMethod.ANY],
+      methods: [
+        apigwv2.HttpMethod.GET,
+        apigwv2.HttpMethod.POST,
+        apigwv2.HttpMethod.PUT,
+        apigwv2.HttpMethod.DELETE,
+        apigwv2.HttpMethod.PATCH,
+        apigwv2.HttpMethod.HEAD,
+      ],
       integration,
     });
 

@@ -9,6 +9,7 @@ export default defineConfig({
     react(),
     tailwindcss(),
     VitePWA({
+      injectRegister: null,
       registerType: 'autoUpdate',
       srcDir: 'src',
       filename: 'service-worker.ts',

@@ -3,7 +3,7 @@ import { handle } from 'hono/aws-lambda';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, ScanCommand, PutCommand, BatchWriteCommand, GetCommand } from '@aws-sdk/lib-dynamodb';
 import { BedrockRuntimeClient, InvokeModelCommand } from '@aws-sdk/client-bedrock-runtime';
-import { compareSync, hashSync } from 'bcrypt';
+import { compareSync, hashSync } from 'bcryptjs';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import * as webpush from 'web-push';
@@ -88,7 +88,7 @@ app.post('/upload', async (c) => {
     }`;
 
     const bedrockCommand = new InvokeModelCommand({
-        modelId: 'anthropic.claude-3-sonnet-20240229-v1:0', // Or another suitable model
+        modelId: process.env.BEDROCK_MODEL_ID!, // Use environment variable for Model ID / Inference Profile ARN
         contentType: 'application/json',
         body: JSON.stringify({
             anthropic_version: 'bedrock-2023-05-31',
