@@ -20,6 +20,7 @@ interface AppState {
   login: (password: string) => Promise<void>;
   fetchBooks: () => Promise<void>;
   uploadImage: (file: File) => Promise<void>;
+  deleteBook: (bookId: string) => Promise<void>;
 }
 
 export const useStore = create<AppState>((set, get) => ({
@@ -72,6 +73,19 @@ export const useStore = create<AppState>((set, get) => ({
       useStore.getState().fetchBooks();
     } catch (err) {
       set({ error: 'Failed to upload image.', isLoading: false });
+    }
+  },
+
+  deleteBook: async (bookId: string) => {
+    set({ isLoading: true, error: null });
+    try {
+      await axios.delete(`${get().apiUrl}/books/${bookId}`);
+      set((state) => ({
+        books: state.books.filter((book) => book.bookId !== bookId),
+        isLoading: false,
+      }));
+    } catch (err) {
+      set({ error: 'Failed to delete book.', isLoading: false });
     }
   },
 }));

@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { handle } from 'hono/aws-lambda';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient, ScanCommand, PutCommand, BatchWriteCommand, GetCommand } from '@aws-sdk/lib-dynamodb';
+import { DynamoDBDocumentClient, ScanCommand, PutCommand, BatchWriteCommand, GetCommand, DeleteCommand } from '@aws-sdk/lib-dynamodb';
 import { BedrockRuntimeClient, InvokeModelCommand } from '@aws-sdk/client-bedrock-runtime';
 import { compareSync, hashSync } from 'bcryptjs';
 import { zValidator } from '@hono/zod-validator';
@@ -68,6 +68,19 @@ app.get('/books', async (c) => {
     const command = new ScanCommand({ TableName: booksTableName, FilterExpression: "userId = :userId", ExpressionAttributeValues: { ":userId": "defaultUser" } });
     const { Items } = await docClient.send(command);
     return c.json(Items);
+});
+
+app.delete('/books/:bookId', async (c) => {
+    const { bookId } = c.req.param();
+    const command = new DeleteCommand({
+        TableName: booksTableName,
+        Key: {
+            userId: 'defaultUser',
+            bookId: bookId,
+        },
+    });
+    await docClient.send(command);
+    return c.json({ success: true });
 });
 
 app.post('/subscribe', zValidator('json', subscriptionSchema), async (c) => {
