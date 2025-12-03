@@ -133,10 +133,14 @@ app.post('/upload', async (c) => {
         const parsedBedrockResponse = bedrockResponseSchema.parse(JSON.parse(responseBody));
         let jsonString = parsedBedrockResponse.content[0].text;
 
+        // Extract the JSON part from the markdown-like response
+        const match = jsonString.match(/{[\s\S]*}/);
+        if (!match) {
+            throw new Error("Could not find a valid JSON object in the Bedrock response.");
+        }
+        const extractedJson = match[0];
 
-
-
-        const parsedResult = JSON.parse(jsonString);
+        const parsedResult = JSON.parse(extractedJson);
         logger.info({ parsedResult }, 'Parsed Bedrock response');
 
         if (!parsedResult.books || !Array.isArray(parsedResult.books)) {
