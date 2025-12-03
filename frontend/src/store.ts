@@ -70,7 +70,7 @@ export const useStore = create<AppState>((set, get) => ({
       await axios.post(`${get().apiUrl}/upload`, { image: imageBase64 });
       set({ isLoading: false });
       // After upload, refresh the book list
-      get().fetchBooks();
+      useStore.getState().fetchBooks();
     } catch (err) {
       set({ error: 'Failed to upload image.', isLoading: false });
     }
