@@ -100,7 +100,7 @@ const LoginScreen = () => {
 };
 
 const MainScreen = () => {
-  const { books, fetchBooks, uploadImage, isLoading, error } = useStore();
+  const { books, fetchBooks, uploadImage, isLoading, error, deleteBook } = useStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -128,10 +128,18 @@ const MainScreen = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {books.length > 0 ? (
             books.map((book) => (
-              <div key={book.bookId} className="bg-white shadow-md rounded p-4">
-                <h3 className="font-bold text-lg">{book.title}</h3>
-                <p className="text-gray-600">Lent on: {book.lendingDate}</p>
-                <p className="text-gray-600 font-semibold">Due on: {book.dueDate}</p>
+              <div key={book.bookId} className="bg-white shadow-md rounded p-4 flex flex-col">
+                <div className="flex-grow">
+                  <h3 className="font-bold text-lg">{book.title}</h3>
+                  <p className="text-gray-600">Lent on: {book.lendingDate}</p>
+                  <p className="text-gray-600 font-semibold">Due on: {book.dueDate}</p>
+                </div>
+                <button
+                  onClick={() => deleteBook(book.bookId)}
+                  className="mt-4 bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-3 rounded text-sm self-end"
+                >
+                  Delete
+                </button>
               </div>
             ))
           ) : (
