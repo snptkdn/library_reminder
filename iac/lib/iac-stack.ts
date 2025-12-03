@@ -105,6 +105,7 @@ export class IacStack extends cdk.Stack {
         BEDROCK_MODEL_ID: bedrockModelId.valueAsString,
       },
       timeout: cdk.Duration.seconds(30),
+      loggingFormat: lambda.LoggingFormat.JSON,
     });
 
     // Grant Lambda permissions to access DynamoDB tables
