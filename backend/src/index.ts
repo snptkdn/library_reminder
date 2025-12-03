@@ -44,6 +44,12 @@ const subscriptionSchema = z.object({
     keys: z.object({ p256dh: z.string(), auth: z.string() }),
 });
 
+const bedrockResponseSchema = z.object({
+    content: z.array(z.object({
+        text: z.string()
+    })).min(1)
+});
+
 // --- API Routes ---
 
 app.get('/', (c) => c.text('API is running.'));
@@ -79,6 +85,7 @@ app.post('/upload', async (c) => {
     const imageBase64 = body.image; // Assuming image is sent as a base64 encoded string
 
     const prompt = `This is an image of a library lending list. Extract all book information and output it in the following JSON format.
+    IMPORTANT: Output ONLY the raw JSON string. Do NOT wrap it in markdown code blocks (like \`\`\`json). Do not add any conversational text.
     {
       "books": [
         {
@@ -109,7 +116,13 @@ app.post('/upload', async (c) => {
         const response = await bedrockClient.send(bedrockCommand);
         const responseBody = new TextDecoder().decode(response.body);
         logger.info({ bedrockResponse: responseBody }, 'Received response from Bedrock');
-        const jsonString = JSON.parse(responseBody).content[0].text;
+
+        const parsedBedrockResponse = bedrockResponseSchema.parse(JSON.parse(responseBody));
+        let jsonString = parsedBedrockResponse.content[0].text;
+
+
+
+
         const parsedResult = JSON.parse(jsonString);
         logger.info({ parsedResult }, 'Parsed Bedrock response');
 
