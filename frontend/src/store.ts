@@ -14,7 +14,9 @@ interface AppState {
   books: Book[];
   isLoading: boolean;
   error: string | null;
+  apiUrl: string;
   vapidPublicKey: string;
+  setApiUrl: (url: string) => void;
   setVapidPublicKey: (key: string) => void;
   login: (password: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -29,8 +31,10 @@ export const useStore = create<AppState>((set, get) => ({
   books: [],
   isLoading: false,
   error: null,
+  apiUrl: '',
   vapidPublicKey: '',
 
+  setApiUrl: (url: string) => set({ apiUrl: url }),
   setVapidPublicKey: (key: string) => set({ vapidPublicKey: key }),
 
   login: async (password: string) => {

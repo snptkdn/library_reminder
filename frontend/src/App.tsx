@@ -155,21 +155,28 @@ const MainScreen = () => {
 };
 
 function App() {
-  const { isAuthenticated, vapidPublicKey, setVapidPublicKey, checkAuth } = useStore();
+  const { isAuthenticated, setApiUrl, vapidPublicKey, setVapidPublicKey, checkAuth } = useStore();
 
   useEffect(() => {
     fetch('/config.json')
       .then((res) => res.json())
       .then((data) => {
+        if (data.apiUrl) {
+          setApiUrl(data.apiUrl);
+        }
         if (data.vapidPublicKey) {
           setVapidPublicKey(data.vapidPublicKey);
         }
+        return Promise.resolve();
+      })
+      .then(() => {
+        checkAuth();
       })
       .catch((err) => {
         console.error('Failed to load config.json', err);
+        checkAuth();
       });
-    checkAuth();
-  }, [setVapidPublicKey, checkAuth]);
+  }, [setApiUrl, setVapidPublicKey, checkAuth]);
 
   useEffect(() => {
     if (isAuthenticated && vapidPublicKey) {
