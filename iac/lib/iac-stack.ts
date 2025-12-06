@@ -42,6 +42,12 @@ export class IacStack extends cdk.Stack {
       default: 'arn:aws:bedrock:ap-northeast-1:570699714415:inference-profile/jp.anthropic.claude-sonnet-4-5-20250929-v1:0',
     });
 
+    const jwtSecret = new cdk.CfnParameter(this, 'JwtSecret', {
+      type: 'String',
+      description: 'The secret key for signing JWTs.',
+      noEcho: true,
+    });
+
     // --- Frontend Hosting (Secure Pattern) ---
 
     // S3 Bucket to host the static React app (kept private)
@@ -103,6 +109,7 @@ export class IacStack extends cdk.Stack {
         BEDROCK_REGION: this.region, // Pass the stack's region to the Lambda
         VAPID_EMAIL: vapidEmail.valueAsString,
         BEDROCK_MODEL_ID: bedrockModelId.valueAsString,
+        JWT_SECRET: jwtSecret.valueAsString,
       },
       timeout: cdk.Duration.seconds(30),
       loggingFormat: lambda.LoggingFormat.JSON,

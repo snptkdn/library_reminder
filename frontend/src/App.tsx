@@ -100,7 +100,7 @@ const LoginScreen = () => {
 };
 
 const MainScreen = () => {
-  const { books, fetchBooks, uploadImage, isLoading, error, deleteBook } = useStore();
+  const { books, fetchBooks, uploadImage, isLoading, error, deleteBook, logout } = useStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -116,7 +116,10 @@ const MainScreen = () => {
 
   return (
     <div className="container mx-auto p-4">
-      <h1 className="text-3xl font-bold mb-6">Library Dashboard</h1>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold">Library Dashboard</h1>
+        <Button onClick={() => logout()} className="bg-gray-500 hover:bg-gray-700">Logout</Button>
+      </div>
       {error && <p className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">{error}</p>}
       <div className="bg-white shadow-md rounded p-6 mb-8">
         <h2 className="text-xl font-semibold mb-4">Upload Lending Image</h2>
@@ -152,8 +155,8 @@ const MainScreen = () => {
 };
 
 function App() {
-  const { isAuthenticated, setApiUrl, vapidPublicKey, setVapidPublicKey } = useStore();
-  // Load API URL from config.json on mount
+  const { isAuthenticated, setApiUrl, vapidPublicKey, setVapidPublicKey, checkAuth } = useStore();
+
   useEffect(() => {
     fetch('/config.json')
       .then((res) => res.json())
@@ -164,11 +167,16 @@ function App() {
         if (data.vapidPublicKey) {
           setVapidPublicKey(data.vapidPublicKey);
         }
+        return Promise.resolve();
+      })
+      .then(() => {
+        checkAuth();
       })
       .catch((err) => {
         console.error('Failed to load config.json', err);
+        checkAuth();
       });
-  }, []);
+  }, [setApiUrl, setVapidPublicKey, checkAuth]);
 
   useEffect(() => {
     if (isAuthenticated && vapidPublicKey) {
