@@ -102,10 +102,9 @@ app.post('/logout', (c) => {
 });
 
 // --- Authenticated Routes ---
-const api = new Hono<{ Variables: Variables }>();
 
 // JWT Middleware
-api.use('*', async (c, next) => {
+app.use('/api/*', async (c, next) => {
     if (!JWT_SECRET) {
         throw new Error('JWT_SECRET is not set');
     }
@@ -117,7 +116,7 @@ api.use('*', async (c, next) => {
 });
 
 // Add user to context
-api.use('*', async (c, next) => {
+app.use('/api/*', async (c, next) => {
     const payload = c.get('jwtPayload');
     if (payload && payload.sub) {
         c.set('user', { id: payload.sub });
@@ -126,7 +125,7 @@ api.use('*', async (c, next) => {
 });
 
 
-api.get('/me', (c) => {
+app.get('/api/me', (c) => {
     const user = c.get('user');
     if (!user) {
         return c.json({ user: null }, 404);
@@ -134,14 +133,14 @@ api.get('/me', (c) => {
     return c.json({ user });
 });
 
-api.get('/books', async (c) => {
+app.get('/api/books', async (c) => {
     const user = c.get('user');
     const command = new ScanCommand({ TableName: booksTableName, FilterExpression: "userId = :userId", ExpressionAttributeValues: { ":userId": user.id } });
     const { Items } = await docClient.send(command);
     return c.json(Items);
 });
 
-api.delete('/books/:bookId', async (c) => {
+app.delete('/api/books/:bookId', async (c) => {
     const user = c.get('user');
     const { bookId } = c.req.param();
     const command = new DeleteCommand({
@@ -155,7 +154,7 @@ api.delete('/books/:bookId', async (c) => {
     return c.json({ success: true });
 });
 
-api.post('/subscribe', zValidator('json', subscriptionSchema), async (c) => {
+app.post('/api/subscribe', zValidator('json', subscriptionSchema), async (c) => {
     const user = c.get('user');
     const subscription = c.req.valid('json');
     const command = new PutCommand({
@@ -166,7 +165,7 @@ api.post('/subscribe', zValidator('json', subscriptionSchema), async (c) => {
     return c.json({ success: true }, 201);
 });
 
-api.post('/upload', async (c) => {
+app.post('/api/upload', async (c) => {
     const user = c.get('user');
     const body = await c.req.json();
     const imageBase64 = body.image; // Assuming image is sent as a base64 encoded string
@@ -248,8 +247,6 @@ api.post('/upload', async (c) => {
     }
 });
 
-
-app.route('/api', api);
 
 // This function will be triggered by EventBridge
 const handleScheduledNotification = async () => {
