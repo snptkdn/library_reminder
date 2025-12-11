@@ -12,6 +12,7 @@ import * as origins from 'aws-cdk-lib/aws-cloudfront-origins';
 import * as scheduler from 'aws-cdk-lib/aws-scheduler';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as s3deploy from 'aws-cdk-lib/aws-s3-deployment';
+import { CorsHttpMethod } from 'aws-cdk-lib/aws-apigatewayv2';
 
 export class IacStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -40,6 +41,12 @@ export class IacStack extends cdk.Stack {
       type: 'String',
       description: 'The Bedrock Model ID or Inference Profile ARN.',
       default: 'arn:aws:bedrock:ap-northeast-1:570699714415:inference-profile/jp.anthropic.claude-sonnet-4-5-20250929-v1:0',
+    });
+
+    const jwtSecret = new cdk.CfnParameter(this, 'JwtSecret', {
+      type: 'String',
+      description: 'The secret key for signing JWTs.',
+      noEcho: true,
     });
 
     // --- Frontend Hosting (Secure Pattern) ---
@@ -103,6 +110,8 @@ export class IacStack extends cdk.Stack {
         BEDROCK_REGION: this.region, // Pass the stack's region to the Lambda
         VAPID_EMAIL: vapidEmail.valueAsString,
         BEDROCK_MODEL_ID: bedrockModelId.valueAsString,
+        JWT_SECRET: jwtSecret.valueAsString,
+        CORS_ORIGIN: `https://${distribution.distributionDomainName}`,
       },
       timeout: cdk.Duration.seconds(30),
       loggingFormat: lambda.LoggingFormat.JSON,
@@ -121,8 +130,9 @@ export class IacStack extends cdk.Stack {
     // API Gateway (HTTP API)
     const httpApi = new apigwv2.HttpApi(this, 'HttpApi', {
       corsPreflight: {
-        allowHeaders: ['*'],
-        allowMethods: [apigwv2.CorsHttpMethod.ANY],
+        allowHeaders: ['Content-Type', 'Authorization', 'X-Amz-Date', 'X-Api-Key', 'X-Amz-Security-Token'],
+        // allowMethods: [apigwv2.CorsHttpMethod.ANY],
+        allowMethods: [CorsHttpMethod.GET, CorsHttpMethod.POST, CorsHttpMethod.DELETE, CorsHttpMethod.PUT],
         allowOrigins: [`https://${distribution.distributionDomainName}`], // Restrict to CloudFront URL
         allowCredentials: true,
       },

@@ -1,5 +1,9 @@
 import { Hono } from 'hono';
 import { handle } from 'hono/aws-lambda';
+import { cors } from 'hono/cors';
+import { jwt, sign } from 'hono/jwt';
+import type { JwtVariables } from 'hono/jwt';
+import { setCookie, deleteCookie } from 'hono/cookie';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, ScanCommand, PutCommand, BatchWriteCommand, GetCommand, DeleteCommand } from '@aws-sdk/lib-dynamodb';
 import { BedrockRuntimeClient, InvokeModelCommand } from '@aws-sdk/client-bedrock-runtime';
@@ -10,12 +14,21 @@ import * as webpush from 'web-push';
 import { v4 as uuidv4 } from 'uuid';
 import pino from 'pino';
 
-const app = new Hono();
+type Variables = JwtVariables & {
+    user: {
+        id: string;
+    }
+}
+
+const app = new Hono<{ Variables: Variables }>();
 const logger = pino();
+
+// --- CORS Middleware ---
 
 // --- Hardcoded Credentials & Config ---
 const USERNAME = 'user';
 const PASSWORD_HASH = hashSync('password', 10);
+const JWT_SECRET = process.env.JWT_SECRET;
 // VAPID keys must be provided as environment variables
 const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY;
 const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY;
@@ -52,30 +65,91 @@ const bedrockResponseSchema = z.object({
 
 // --- API Routes ---
 
-app.get('/', (c) => c.text('API is running.'));
+app.get('/', (c) => c.text('Hello! The API is running.'));
 
 app.post('/login', zValidator('json', loginSchema), async (c) => {
     const { username, password } = c.req.valid('json');
-    if (username === USERNAME && compareSync(password, PASSWORD_HASH)) {
-        return c.json({ success: true, message: 'Logged in' });
+
+    if (username !== USERNAME || !compareSync(password, PASSWORD_HASH)) {
+        return c.json({ success: false, message: 'Invalid credentials' }, 401);
     }
-    return c.json({ success: false, message: 'Invalid credentials' }, 401);
+
+    // --- JWT Generation ---
+    const payload = {
+        sub: 'defaultUser', // subject
+        iat: Math.floor(Date.now() / 1000), // issued at
+        exp: Math.floor(Date.now() / 1000) + (60 * 60 * 24 * 7), // expires in 7 days
+    };
+
+    if (!JWT_SECRET) {
+        throw new Error('JWT_SECRET is not set');
+    }
+    const token = await sign(payload, JWT_SECRET);
+
+    // --- Set Cookie ---
+    setCookie(c, 'token', token, {
+        path: '/',
+        httpOnly: true,
+        secure: true, // Only send over HTTPS
+        sameSite: 'None', // Required for cross-site requests
+        maxAge: 60 * 60 * 24 * 7, // 1 week
+    });
+
+
+    return c.json({ success: true, message: 'Logged in' });
 });
 
-// --- All subsequent routes are for the "single user" ---
+app.post('/logout', (c) => {
+    deleteCookie(c, 'token');
+    return c.json({ success: true });
+});
 
-app.get('/books', async (c) => {
-    const command = new ScanCommand({ TableName: booksTableName, FilterExpression: "userId = :userId", ExpressionAttributeValues: { ":userId": "defaultUser" } });
+// --- Authenticated Routes ---
+
+// JWT Middleware
+app.use('/api/*', async (c, next) => {
+    if (!JWT_SECRET) {
+        throw new Error('JWT_SECRET is not set');
+    }
+    const middleware = jwt({
+        secret: JWT_SECRET,
+        cookie: 'token',
+    });
+    return middleware(c, next);
+});
+
+// Add user to context
+app.use('/api/*', async (c, next) => {
+    const payload = c.get('jwtPayload');
+    if (payload && payload.sub) {
+        c.set('user', { id: payload.sub });
+    }
+    await next();
+});
+
+
+app.get('/api/me', (c) => {
+    const user = c.get('user');
+    if (!user) {
+        return c.json({ user: null }, 404);
+    }
+    return c.json({ user });
+});
+
+app.get('/api/books', async (c) => {
+    const user = c.get('user');
+    const command = new ScanCommand({ TableName: booksTableName, FilterExpression: "userId = :userId", ExpressionAttributeValues: { ":userId": user.id } });
     const { Items } = await docClient.send(command);
     return c.json(Items);
 });
 
-app.delete('/books/:bookId', async (c) => {
+app.delete('/api/books/:bookId', async (c) => {
+    const user = c.get('user');
     const { bookId } = c.req.param();
     const command = new DeleteCommand({
         TableName: booksTableName,
         Key: {
-            userId: 'defaultUser',
+            userId: user.id,
             bookId: bookId,
         },
     });
@@ -83,17 +157,19 @@ app.delete('/books/:bookId', async (c) => {
     return c.json({ success: true });
 });
 
-app.post('/subscribe', zValidator('json', subscriptionSchema), async (c) => {
+app.post('/api/subscribe', zValidator('json', subscriptionSchema), async (c) => {
+    const user = c.get('user');
     const subscription = c.req.valid('json');
     const command = new PutCommand({
         TableName: subscriptionTableName,
-        Item: { userId: 'defaultUser', subscription },
+        Item: { userId: user.id, subscription },
     });
     await docClient.send(command);
     return c.json({ success: true }, 201);
 });
 
-app.post('/upload', async (c) => {
+app.post('/api/upload', async (c) => {
+    const user = c.get('user');
     const body = await c.req.json();
     const imageBase64 = body.image; // Assuming image is sent as a base64 encoded string
 
@@ -150,7 +226,7 @@ app.post('/upload', async (c) => {
         const putRequests = parsedResult.books.map(book => ({
             PutRequest: {
                 Item: {
-                    userId: 'defaultUser',
+                    userId: user.id,
                     bookId: uuidv4(),
                     title: book.title,
                     lendingDate: book.lending_date,
