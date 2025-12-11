@@ -223,7 +223,23 @@ app.post('/api/upload', async (c) => {
             throw new Error("Invalid format from Bedrock");
         }
 
-        const putRequests = parsedResult.books.map(book => ({
+        const allBooks = parsedResult.books;
+        const validBooks = [];
+        const skippedBooks = [];
+
+        for (const book of allBooks) {
+            if (book.lending_date) {
+                validBooks.push(book);
+            } else {
+                skippedBooks.push(book);
+            }
+        }
+
+        if (skippedBooks.length > 0) {
+            logger.warn({ skippedBooks }, 'Skipped some books due to missing lending_date');
+        }
+
+        const putRequests = validBooks.map(book => ({
             PutRequest: {
                 Item: {
                     userId: user.id,
@@ -242,7 +258,12 @@ app.post('/api/upload', async (c) => {
             await docClient.send(batchWriteCommand);
         }
 
-        return c.json({ success: true, count: putRequests.length });
+        return c.json({
+            success: true,
+            savedCount: putRequests.length,
+            skippedCount: skippedBooks.length,
+            skippedBooks: skippedBooks
+        });
 
     } catch (error) {
         logger.error(error, 'Error processing image with Bedrock or saving to DynamoDB');
