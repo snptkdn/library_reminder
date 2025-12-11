@@ -114,6 +114,28 @@ const MainScreen = () => {
     }
   };
 
+  const getCardColor = (dueDate: string) => {
+    const due = new Date(dueDate);
+    const today = new Date();
+
+    // Reset time part for accurate date-only comparison
+    due.setHours(0, 0, 0, 0);
+    today.setHours(0, 0, 0, 0);
+
+    const tomorrow = new Date(today);
+    tomorrow.setDate(today.getDate() + 1);
+
+    if (due < today) {
+      return 'bg-red-300'; // Overdue
+    }
+    if (due.getTime() === tomorrow.getTime()) {
+      return 'bg-yellow-300'; // Due tomorrow
+    }
+    return 'bg-white'; // Default
+  };
+
+  const sortedBooks = [...books].sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
+
   return (
     <div className="container mx-auto p-4">
       <div className="flex justify-between items-center mb-6">
@@ -129,9 +151,9 @@ const MainScreen = () => {
       <div>
         <h2 className="text-2xl font-semibold mb-4">Your Books</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {books.length > 0 ? (
-            books.map((book) => (
-              <div key={book.bookId} className="bg-white shadow-md rounded p-4 flex flex-col">
+          {sortedBooks.length > 0 ? (
+            sortedBooks.map((book) => (
+              <div key={book.bookId} className={`${getCardColor(book.dueDate)} shadow-md rounded p-4 flex flex-col`}>
                 <div className="flex-grow">
                   <h3 className="font-bold text-lg">{book.title}</h3>
                   <p className="text-gray-600">Lent on: {book.lendingDate}</p>
