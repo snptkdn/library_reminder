@@ -110,6 +110,7 @@ export class IacStack extends cdk.Stack {
         VAPID_EMAIL: vapidEmail.valueAsString,
         BEDROCK_MODEL_ID: bedrockModelId.valueAsString,
         JWT_SECRET: jwtSecret.valueAsString,
+        CORS_ORIGIN: `https://${distribution.distributionDomainName}`,
       },
       timeout: cdk.Duration.seconds(30),
       loggingFormat: lambda.LoggingFormat.JSON,

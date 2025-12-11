@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { handle } from 'hono/aws-lambda';
+import { cors } from 'hono/cors';
 import { jwt, sign } from 'hono/jwt';
 import type { JwtVariables } from 'hono/jwt';
 import { setCookie, deleteCookie } from 'hono/cookie';
@@ -21,6 +22,14 @@ type Variables = JwtVariables & {
 
 const app = new Hono<{ Variables: Variables }>();
 const logger = pino();
+
+// --- CORS Middleware ---
+app.use('*', cors({
+    origin: process.env.CORS_ORIGIN!,
+    allowHeaders: ['Content-Type', 'Authorization'],
+    allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    credentials: true,
+}));
 
 // --- Hardcoded Credentials & Config ---
 const USERNAME = 'user';
