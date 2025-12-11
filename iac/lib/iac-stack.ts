@@ -12,6 +12,7 @@ import * as origins from 'aws-cdk-lib/aws-cloudfront-origins';
 import * as scheduler from 'aws-cdk-lib/aws-scheduler';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as s3deploy from 'aws-cdk-lib/aws-s3-deployment';
+import { CorsHttpMethod } from 'aws-cdk-lib/aws-apigatewayv2';
 
 export class IacStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -129,8 +130,9 @@ export class IacStack extends cdk.Stack {
     // API Gateway (HTTP API)
     const httpApi = new apigwv2.HttpApi(this, 'HttpApi', {
       corsPreflight: {
-        allowHeaders: ['*'],
-        allowMethods: [apigwv2.CorsHttpMethod.ANY],
+        allowHeaders: ['Content-Type', 'Authorization', 'X-Amz-Date', 'X-Api-Key', 'X-Amz-Security-Token'],
+        // allowMethods: [apigwv2.CorsHttpMethod.ANY],
+        allowMethods: [CorsHttpMethod.GET, CorsHttpMethod.POST, CorsHttpMethod.DELETE, CorsHttpMethod.PUT],
         allowOrigins: [`https://${distribution.distributionDomainName}`], // Restrict to CloudFront URL
         allowCredentials: true,
       },
